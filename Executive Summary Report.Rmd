@@ -1,0 +1,294 @@
+---
+title: Executive Summary Report - House Price in New York
+
+# Use letters for affiliations, numbers to show equal authorship (if applicable) and to indicate the corresponding author
+author:
+  - name: "| 490585676 | 510006222 | 500002526 | 510239602 | 510323026" 
+
+
+# Place eg a DOI URL or CRAN Package URL here
+doi_footer: "https://github.sydney.edu.au/jliu9304/RE07N2"
+
+# Abstract
+abstract: |
+ The aim of this report is to predict which factors influence the house price the most. The dataset we used in this report is House price in New York. We use some models to analyze the result depending on many variables such as living area, land value and ages of the house.
+ First, we read in the dataset and cleaned the missing value and Na value. Then we visualized the distribution of dependent variables to check the normality and linearity. We create 5 models to check which one is the most suitable for our topic. Afterwards we are using forward and back forward selections. Finally, we keep the 6 most relevant variables. We checked each model's RMSE, MAE, AIC. The log-log model is the most appropriate model. Finally, we discussed the result and raised some limitations of our report and the points we can improve.
+ 
+  
+keywords:
+  - House Price
+  - Multiple Linear Regression
+  
+
+
+# Paper size for the document, values of letter and a4
+papersize: letter
+
+# Font size of the document, values of 9pt (default), 10pt, 11pt and 12pt
+fontsize: 9pt
+
+# Optional: Force one-column layout, default is two-column
+#one_column: true
+
+# Optional: Enables lineno mode, but only if one_column mode is also true
+#lineno: true
+
+# Optional: Enable one-sided layout, default is two-sided
+#one_sided: true
+
+# Optional: Enable section numbering, default is unnumbered
+#numbersections: true
+
+# Optional: Specify the depth of section number, default is 5
+#secnumdepth: 5
+
+# Optional: Skip inserting final break between acknowledgements, default is false
+skip_final_break: true
+
+# Optional: Bibliography 
+bibliography: pinp
+
+# Optional: Enable a 'Draft' watermark on the document
+#watermark: true
+
+# Customize footer, eg by referencing the vignette
+footer_contents: "Report"
+
+# Produce a pinp document
+output: pinp::pinp
+
+# Required: Vignette metadata for inclusion in a package.
+vignette: >
+  %\VignetteIndexEntry{YourPackage-vignetteentry}
+  %\VignetteKeywords{YourPackage, r, anotherkeyword}
+  %\VignettePackage{YourPackage}
+  %\VignetteEngine{knitr::rmarkdown}
+---
+
+```{r, load_feds, echo=FALSE, cache=FALSE, message=FALSE}
+library(tidyverse)
+library(GGally)
+library(car)
+library(ggfortify)
+library(sjPlot)
+library(equatiomatic)
+library(faraway)
+library(qtlcharts)
+library(ggfortify)
+library(caret)
+library(knitr)
+library(ggpubr)
+library(janitor)
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+```{r echo = FALSE,message=FALSE}
+
+data = read.delim("housing-prices-ge19.txt", header = T, sep = "\t")
+data = remove_empty(data)
+data = data %>%
+  janitor::clean_names()
+
+```
+
+```{r echo = FALSE, message = FALSE}
+## Model 1 (linear-linear(full))
+lm1 = lm(price ~ ., data = data)
+#summary(lm1)
+```
+
+
+```{r echo = FALSE, , message = FALSE}
+#autoplot(lm1, which = 1:2) + theme_bw()
+```
+
+
+
+
+```{r echo = FALSE, message = FALSE}
+## Model 2 (linear-linear model after variable selection)
+M0 = lm(price ~ 1, data = data)
+M1 = lm(price ~ ., data = data)
+
+# backward selection
+backward = step(M1, direction = "backward", trace = FALSE)
+#summary(backward)
+
+# forward selection
+forward = step(M0, scope = list(lower = M0, upper = M1), direction = "forward", trace = FALSE)
+#summary(forward)
+```
+
+
+
+
+```{r echo = FALSE, message = FALSE}
+## Model 3 (linear-log)
+data = data %>%
+mutate(loland_value = log(land_value))
+lm3 = lm(price ~ lot_size + waterfront + loland_value + living_area + bathrooms + new_construct, data)
+#summary(lm3)
+```
+
+
+
+
+```{r echo = FALSE, message = FALSE}
+## Model 4 (log-linear)
+data = data %>%
+mutate(loPrice = log(price))
+lm4 = lm(loPrice ~ lot_size + land_value + waterfront + new_construct + living_area + bathrooms, data)
+#summary(lm4)
+```
+
+
+
+
+```{r echo = FALSE, message = FALSE}
+## Model 5 (log-log)
+data = data %>%
+mutate(lorland = log(land_value)) # log(land.value)
+data = data %>%
+mutate(lorrice = log(price)) #log(price)
+lm5 = lm(lorrice ~ lot_size + waterfront + lorland + new_construct + living_area + bathrooms, data)
+#summary(lm5)
+```
+
+
+Introduction  { .unnumbered}
+========================================
+
+The main idea of our report is to predict the house price will be influenced by what variables. The dataset was taken from full Saratoga Housing Data. We will use some models to predict the result and analyze the best model for our topic. 
+The property development will be our target audience. Through the report we will discuss the relationship between each variable and house price in New York. The main goal of property development is making money. Through this report they can know which variables affect house price the most. Some obvious variables can influence the house price for example living area.
+
+
+Data description  { .unnumbered}
+========================================
+
+The dataset was a random sample of 1734 houses. It is taken from full saratoga housing data. There are 1734 rows and 17 columns in this dataset.The house price is the main variable. There are 6 key factors are lot size, water frontage, land value, living area, bathrooms, and new construction. The land value and living area shows the value of the land and the size of the living area. Water frontage represents the property including the waterfront or not. Bathrooms show the number of bathrooms and new construction shows if it is new.
+Limitations: This dataset is a random sample, so the standard is not the same. The dataset shows some variables that may affect the house price. But it does not cover many fields, for example transportation or a good shopping mall. These two things can convenient the life convenient and affect the price. This dataset is more focused on the house itself, not from the owner’s point of view. Some description of the data is not clear and there are some missing values in this dataset.
+
+
+Analysis { .unnumbered}
+========================================
+Model selection:
+----------------------------------------
+To make the most appropriate model, we create five models. Through the linear-linear full model and the residual plot, the RSE is high, and the residuals are scattered and high. 
+
+And in our IDA , the box plot also shows there are a number of outliers. In this regard, we preliminarily judge that we need to perform log transformation on the dependent variable (price). In order to get a more suitable model, we need to get the correlation of each variable with the dependent variable, and then leave the variables with high correlation. We decided to filter the variables by AIC which is a very scientific and effective model selection method. After using forward and backward selection, variables that don't have much effect on the price have all been removed, we keep the 6 most relevant variables. We have previously observed that the land value was the least normal and interested in it. So, we do log transformation on the land value and obtain a linear-log model, however, the RSE is still high.
+
+As mentioned, we do log transformation on the price and obtain a log-linear model (Fig.2). The residual standard error is significantly lower. 
+Finally, log two variables simultaneously and obtain the log-log model (Fig.3), the result is very close to the previous model. 
+
+To get the most appropriate model, we use 10-fold cross validation. By comparing the results (Fig.4 and Fig.5), we find that the log-log model has the highest R-squared and lowest RMSE and MAE. Therefore, the log-log model is our most appropriate model.
+
+
+
+Assumption check: 
+----------------------------------------
+In this part, we will focus on the figure 6 provided in the appendix.
+First, we will be looking for **linearity**. Based on the residuals versus fitted values plot, we can observe that there are some outliers that occur in the plot. The residuals roughly form a horizontal band around the 0 line. This suggests that the variances of the error terms are equal. The equally spread residuals around a horizontal line without distinct patterns are a good indication of having the linear relationships. 
+Second, we will be looking for **independence**. From the residuals versus fitted values plot, we can again discover that the relation can be also considered as an independence observation. 
+Third, we will be looking for **homoscedasticity**. Since the residuals are spread along the range of predictors, and there was not a funnel shape in the plot, we can say that the data is homoscedasticity. 
+Finally, we will be looking for **normality**. The normality assumption is satisfied because the points in the QQ plot follow the line closely and therefore the residuals can reasonably be assumed to follow a normal distribution. 
+
+
+
+Result { .unnumbered}
+========================================
+
+$$\begin{aligned}
+log(price) = 10.10335 + 0.03328\ lot\ size + 0.53084\ waterfront\\ + 0.12108\ log(land\ value) - 0.08690\ new\ construct \\+ 0.00032\ living\ area + 0.14073\ bathroom 
+\end{aligned}$$
+The independent variable is New York house prices, and the dependent variable is six influencing factors. For house prices, the change in price changes as the dependent variable changes. The best fit among the five models is the log-log model. We can know that on average, a one percent increase in land value will result in a 0.12108% change in house price in New York.
+
+
+
+Conclusion and discussion { .unnumbered}
+========================================
+In the above study, we found that there are several key factors that influence prices in New York throughout the data. These factors are lot size, water frontage, land value, living area, bathrooms, and new construction. In addition to that, we got log -log is the most suitable model for our data. After our discussion, we agreed that this article would be most beneficial for real estate developers in New York. This is because they can decide how to maximize their profits when selling their homes based on the factors analyzed in this article. Of course, there are some limitations to the timing of the data release. For example, because the data was released so early, it has no reference value for current New York home prices. 
+
+
+
+References {#references .unnumbered}
+========================================
+Eddelbuettel, D. (2021, November 4). eddelbuettel/pinp. GitHub. https://github.com/eddelbuettel/pinp
+
+Valiente, C., Swanson, J., & Eisenberg, N. (2011). Linking Students’ Emotions and Academic Achievement: When and Why Emotions Matter. Child Development Perspectives, 6(2), 129–135. https://doi.org/10.1111/j.1750-8606.2011.00192.x
+
+Gujarati, Damodar N.; Porter, Dawn C. (2009). "How to Measure Elasticity: The Log-Linear Model". Basic Econometrics. New York: McGraw-Hill/Irwin. pp. 159–162. ISBN 978-0-07-337577-9.
+
+Making PowerPoint Slides with R. (n.d.). Rstudio-Pubs-Static.s3.Amazonaws.com. Retrieved October 23, 2022, from https://rstudio-pubs-static.s3.amazonaws.com/271122_ab8134500037448f829d1768e5364c14.html
+
+Xie, Y. (2022, October 22). xaringan. GitHub. https://github.com/yihui/xaringan
+
+
+<!-- pandoc writes all tables using longtable, which fails in 2-column mode
+
+  Species                    CBS     CV     G3
+  ----------------------- ------ ------ ------
+  1\. Acetaldehyde           0.0    0.0    0.0
+  2\. Vinyl alcohol          9.1    9.6   13.5
+  3\. Hydroxyethylidene     50.8   51.2   54.0
+
+  : Comparison of the fitted potential energy surfaces and ab initio
+  benchmark electronic energy calculations
+
+-->
+
+\clearpage
+Appendix { .unnumbered}
+========================================
+
+```{r,echo=FALSE, fig.width=7, fig.height=3.5, dpi=300, out.width="240px", out.height="150px", warning=FALSE}
+p = ggplot(data = data, aes(x ="", y =price))
+p + geom_boxplot(notch = TRUE, outlier.colour = "lightblue", fill = "gold", outlier.shape =5, outlier.size = 2) +
+  labs(y = "House Price in New York",
+       title = "Fig. 1.Box plot for House Price in New York")
+```
+
+```{r echo = FALSE, message = FALSE,out.width='60%'}
+## Model 4 (log-linear)
+data = data %>%
+mutate(loPrice = log(price))
+lm4 = lm(loPrice ~ lot_size + land_value + waterfront + new_construct + living_area + bathrooms, data)
+summary(lm4)
+```
+**Fig. 2. Log-linear model**
+
+```{r echo = FALSE}
+## Model 5 (log-log)
+data = data %>%
+mutate(lorland = log(land_value)) # log(land.value)
+data = data %>%
+mutate(lorrice = log(price)) #log(price)
+lm5 = lm(lorrice ~ lot_size + waterfront + lorland + new_construct + living_area + bathrooms, data)
+summary(lm5)
+```
+**Fig. 3. Log-log model**
+
+```{r,echo=FALSE, warning=FALSE}
+# log-linear
+cv_3 = train(
+  loPrice ~ lot_size + land_value + waterfront + new_construct + living_area + bathrooms, data, method = "lm",
+  trControl = trainControl(method = "cv", number = 10,verboseIter = FALSE)
+)
+cv_3
+```
+**Fig. 4. Log-linear model after 10-fold cross validation**
+
+```{r echo = FALSE}
+# log-log
+cv_4 = train(
+  lorrice ~ lot_size + waterfront + lorland + new_construct + living_area + bathrooms, data, method = "lm",
+  trControl = trainControl(method = "cv", number = 10,verboseIter = FALSE)
+)
+cv_4
+```
+**Fig. 5. Log-log model after 10-fold cross validation**
+
+```{r,echo=FALSE, fig.width=7, fig.height=3.5, dpi=300, out.width="240px", out.height="150px", warning=FALSE}
+autoplot(lm5, which = 1:2) + theme_bw()
+```
+**Fig. 6. Assumption check**
+

@@ -1,0 +1,230 @@
+---
+title: "House price in New York"
+author: "RE07N2\n
+        Ran Wang, Xu Huang, Chen-Yu Wang, Wancheng Liu, Jiyuan Liu"
+date: "2022-10-23"
+output:
+  xaringan::moon_reader:
+    css: ["default", "assets/sydney-fonts.css", "assets/sydney.css"]
+    self_contained: false # if true, fonts will be stored locally
+    seal: true # show a title slide with YAML information
+    nature:
+      beforeInit: ["assets/remark-zoom.js", "https://platform.twitter.com/widgets.js"]
+      highlightStyle: github
+      highlightLines: true
+      countIncrementalSlides: false
+      ratio: '16:9' # alternatives '16:9' or '4:3' or others e.g. 13:9
+      navigation:
+        scroll: false # disable slide transitions by scrolling
+---
+## Table of content
+
+1.Introduction
+
+2.Data description
+
+3.Modeling objectives
+
+4.Model selections
+
+5.Assumption check 
+
+6.Conclusion
+
+
+---
+
+## Introduction
+
+
+- Data resource: Full Saratoga Housing data 
+
+
+
+- The aim of the report
+
+
+
+- Target Group: Property development
+
+
+
+---
+
+## Data description
+
+- Data resource: Full Saratoga Housing data 
+- Important variables
+```{r echo = FALSE, message=FALSE}
+library(tidyverse)
+library(ggplot2)
+library(dplyr)
+library(MASS)
+library(janitor)
+library(knitr)
+library(ggpubr)
+library(ggfortify)
+library(sjPlot)
+library(caret)
+library(qtlcharts)
+
+theme_set(theme_bw())
+
+```
+
+```{r echo = FALSE}
+data = read.delim("housing-prices-ge19.txt", header = T, sep = "\t")
+glimpse(data)
+```
+
+
+
+```{r echo = FALSE}
+## clean data
+data = remove_empty(data)
+data = data %>%
+  janitor::clean_names()
+
+```
+
+```{r echo = FALSE}
+summary(data$price)
+```
+
+
+
+---
+
+## Modeling objectives
+
+- 5 models
+
+1. linear-linear full model 
+2. linear-linear null model
+3. linear-log model
+4. log-linear model
+5. log-log model
+
+- The goal of model
+
+
+```{r echo = FALSE, message = FALSE}
+## Model 1 (linear-linear(full))
+lm1 = lm(price ~ ., data = data)
+#summary(lm1)
+```
+
+
+```{r echo = FALSE, , message = FALSE}
+#autoplot(lm1, which = 1:2) + theme_bw()
+```
+
+
+
+
+```{r echo = FALSE, message = FALSE}
+## Model 2 (linear-linear model after variable selection)
+M0 = lm(price ~ 1, data = data)
+M1 = lm(price ~ ., data = data)
+
+# backward selection
+backward = step(M1, direction = "backward", trace = FALSE)
+#summary(backward)
+
+# forward selection
+forward = step(M0, scope = list(lower = M0, upper = M1), direction = "forward", trace = FALSE)
+#summary(forward)
+```
+
+
+
+
+```{r echo = FALSE, message = FALSE}
+## Model 3 (linear-log)
+data = data %>%
+mutate(loland_value = log(land_value))
+lm3 = lm(price ~ lot_size + waterfront + loland_value + living_area + bathrooms + new_construct, data)
+#summary(lm3)
+```
+
+
+
+
+```{r echo = FALSE, message = FALSE}
+## Model 4 (log-linear)
+data = data %>%
+mutate(loPrice = log(price))
+lm4 = lm(loPrice ~ lot_size + land_value + waterfront + new_construct + living_area + bathrooms, data)
+#summary(lm4)
+```
+
+
+
+
+```{r echo = FALSE, message = FALSE}
+## Model 5 (log-log)
+data = data %>%
+mutate(lorland = log(land_value)) # log(land.value)
+data = data %>%
+mutate(lorrice = log(price)) #log(price)
+lm5 = lm(lorrice ~ lot_size + waterfront + lorland + new_construct + living_area + bathrooms, data)
+#summary(lm5)
+```
+
+
+---
+
+## Appropriate model selection
+```{r echo = FALSE}
+sjPlot::tab_model(lm1, forward, lm3, lm4, lm5, digits = 3, show.ci = FALSE)
+```
+
+---
+
+## log-linear model
+```{r echo = FALSE}
+# log-linear
+cv_3 = train(
+  loPrice ~ lot_size + land_value + waterfront + new_construct + living_area + bathrooms, data, method = "lm",
+  trControl = trainControl(method = "cv", number = 10,verboseIter = FALSE)
+)
+cv_3
+```
+---
+## log-log model
+```{r echo = FALSE}
+# log-log
+cv_4 = train(
+  lorrice ~ lot_size + waterfront + lorland + new_construct + living_area + bathrooms, data, method = "lm",
+  trControl = trainControl(method = "cv", number = 10,verboseIter = FALSE)
+)
+cv_4
+```
+
+---
+
+## Assumption check
+```{r echo = FALSE}
+autoplot(lm5, which = 1:2) + theme_bw()
+```
+
+---
+
+## Interpret the estimated coefficients
+log(price) = 10.10335 + 0.03328 lot_size + 0.53084 waterfront + 0.12108 log(land_value) - 0.08690 new_construct + 0.00032 living_area + 0.14073 bathrooms
+
+---
+
+## Conclusion
+
+
+- model: log - log
+
+
+- Beneficiaries: property developers
+
+
+- Limitations of the data
+
+---
+## Thank You!
